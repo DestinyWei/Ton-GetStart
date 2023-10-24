@@ -3,6 +3,7 @@ import { getHttpEndpoint } from "@orbs-network/ton-access";
 import { BN } from 'bn.js';
 import { unixNow } from "./src/lib/utils";
 import { MineMessageParams, Queries } from "./src/giver/NftGiver.data";
+import { toNano } from "ton";
 
 async function main() {
 
@@ -65,6 +66,39 @@ async function main() {
     console.log('msg_hash: ', new BN(msg.hash(), 'be').toString());
     console.log('pow_complexity: ', complexity.toString());
     console.log('msg_hash < pow_complexity: ', new BN(msg.hash(), 'be').lt(complexity));
+
+    console.log(' ');
+    console.log("💣 WARNING! As soon as you find the hash, you should quickly send the transaction.");
+    console.log("If someone else sends a transaction before you, the seed changes, and you'll have to find the hash again!");
+    console.log(' ');
+
+    // flags work only in user-friendly address form
+    const collectionAddr = collection.toFriendly({
+        urlSafe: true,
+        bounceable: true,
+    })
+    // we must convert TON to nanoTON
+    const amountToSend = toNano('0.05').toString()
+    // BOC means Bag Of Cells here
+    const preparedBodyCell = msg.toBoc().toString('base64url')
+
+    // final method to build a payment URL
+    const tonDeepLink = (address: string, amount: string, body: string) => {
+        return `ton://transfer/${address}?amount=${amount}&bin=${body}`;
+    };
+
+    const link = tonDeepLink(collectionAddr, amountToSend, preparedBodyCell);
+
+    console.log('🚀 Link to receive an NFT:');
+    console.log(link);
+
+    const qrcode = require('qrcode-terminal');
+
+    qrcode.generate(link, { small: true }, function (qrcode: any) {
+        console.log('🚀 Link to mine your NFT (use Tonkeeper in testnet mode):');
+        console.log(qrcode);
+        console.log('* If QR is still too big, please run script from the terminal. (or make the font smaller)');
+    });
 }
 
 main()
